@@ -84,6 +84,7 @@ private:
   vtkSimpleMutexLock ThreadDoneLock;
   vtkSimpleConditionVariable ThreadDone;
   int ActiveThreadCount;
+  vtkTypeUInt32 UnreadyThreadCount;
 
   //------------------------------------------------------------------------
   // OutputsLock must be held before accessing any of the following members.
@@ -103,7 +104,14 @@ public:
   vtkSharedData()
     : Done(false)
     , ActiveThreadCount(0)
+    , UnreadyThreadCount(0)
   {
+  }
+
+  //------------------------------------------------------------------------
+  void expectThreads(vtkTypeUInt32 count)
+  {
+    this->UnreadyThreadCount = count;
   }
 
   //------------------------------------------------------------------------
@@ -113,6 +121,8 @@ public:
   {
     this->ThreadDoneLock.Lock();
     this->ActiveThreadCount++;
+    assert(this->UnreadyThreadCount > 0);
+    this->UnreadyThreadCount--;
     this->ThreadDoneLock.Unlock();
   }
 
@@ -122,7 +132,7 @@ public:
   {
     this->ThreadDoneLock.Lock();
     this->ActiveThreadCount--;
-    bool last_thread = (this->ActiveThreadCount == 0);
+    bool last_thread = (this->ActiveThreadCount == 0) && (this->UnreadyThreadCount == 0);
     this->ThreadDoneLock.Unlock();
     if (last_thread)
     {
@@ -407,6 +417,7 @@ public:
 
   void SpawnWorkers(vtkTypeUInt32 numberOfThreads)
   {
+    this->SharedData.expectThreads(numberOfThreads);
     for (vtkTypeUInt32 cc = 0; cc < numberOfThreads; cc++)
     {
       this->RunningThreadIds.push_back(this->Threader->SpawnThread(&Worker, &this->SharedData));
