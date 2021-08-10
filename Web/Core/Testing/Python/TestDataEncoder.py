@@ -75,5 +75,10 @@ class TestDataEncoder(Testing.vtkTest):
         if result == 0:
             raise Exception("TestDataEncoder failed.")
 
+    def testFastDestruction(self):
+        for i in range(1000):
+            o = vtk.vtkDataEncoder()
+            del o
+
 if __name__ == "__main__":
     Testing.main([(TestDataEncoder, 'test')])
