@@ -143,6 +143,8 @@ public:
   //------------------------------------------------------------------------
   void RequestAndWaitForWorkersToEnd()
   {
+    // GetNextInputToProcess() only holds InputsLock before wait
+    this->InputsLock.Lock();
     // Get the done lock so we other threads don't end up testing the Done
     // flag and quitting before this thread starts to wait for them to quit.
     this->DoneLock.Lock();
@@ -158,6 +160,8 @@ public:
     // Tell all workers that inputs are available, so they will try to check
     // the input as well as the done flag.
     this->InputsAvailable.Broadcast();
+
+    this->InputsLock.Unlock();
 
     // Now wait for thread to terminate releasing this->ThreadDoneLock as soon
     // as we start waiting. Thus, no threads have got a chance to call
